@@ -4,7 +4,10 @@ import { UserStateService } from '../../services/states/user/user-state.service'
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { NgxMaskDirective } from 'ngx-mask';
+import { TicketStateService } from '../../services/states/ticket/ticket-state.service';
+import { ServiceManagementService } from '../../services/states/serviceManagement/service-management.service';
 
+type TicketResetMode = 'ALL' | 'SERVICE';
 
 @Component({
   selector: 'app-config',
@@ -21,6 +24,12 @@ export class ConfigComponent implements OnInit {
 
   /** Service para gerenciar estado do usuário */
   public userState = inject(UserStateService);
+
+  /** Service para gerenciar estado dos tickets */
+  public ticketState = inject(TicketStateService);
+
+  /** Service para gerenciar estado dos tickets */
+  public serviceManagementState = inject(ServiceManagementService);
 
   /** Service para exibir notificações toast */
   public snackBar = inject(MatSnackBar);
@@ -45,12 +54,18 @@ export class ConfigComponent implements OnInit {
 
   // ==================== CICLO DE VIDA ====================
 
+  // ServiceManagement state
+  public serviceNamesAndDepartments = this.serviceManagementState.serviceNamesAndDepartments;
+
   /**
    * Inicializa o componente
    * - Busca dados do usuário pelo token JWT
    * - Cria a estrutura do formulário
    */
   ngOnInit(): void {
+
+    this.serviceManagementState.loadServiceNamesAndDepartments();
+
     // Inicializa formulário com campos vazios
     this.profileForm = this.fb.group({
       name: '',              // Nome do usuário
@@ -132,6 +147,41 @@ export class ConfigComponent implements OnInit {
         this.userState.resetStatus();
       }
     })
+
+    effect(() => {
+
+      if (this.ticketState.resetAllCodesStatus() == 'success') {
+        this.snackBar.open(this.ticketState.resetAllCodesMessage(), 'Fechar', {
+          duration: 3000,
+          panelClass: ['snackbar-success']
+        });
+        this.ticketState.resetStatus();
+      }
+
+      if (this.ticketState.resetAllCodesStatus() == 'error') {
+        this.snackBar.open(this.ticketState.resetAllCodesMessage(), 'Fechar', {
+          duration: 3000,
+          panelClass: ['snackbar-error']
+        });
+        this.ticketState.resetStatus();
+      }
+
+      if (this.ticketState.resetCodeStatus() == 'success') {
+        this.snackBar.open(this.ticketState.resetCodeMessage(), 'Fechar', {
+          duration: 3000,
+          panelClass: ['snackbar-success']
+        });
+        this.ticketState.resetStatus();
+      }
+
+      if (this.ticketState.resetCodeStatus() == 'error') {
+        this.snackBar.open(this.ticketState.resetCodeMessage(), 'Fechar', {
+          duration: 3000,
+          panelClass: ['snackbar-error']
+        });
+        this.ticketState.resetStatus();
+      }
+    })
   }
 
   // ==================== MÉTODOS PÚBLICOS ====================
@@ -206,6 +256,62 @@ export class ConfigComponent implements OnInit {
 
     // envia para o backend
     this.userState.updatePhoto(file);
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  public showTicketResetModal = false;
+
+  closeTicketResetModal() {
+    this.showTicketResetModal = false;
+  }
+
+
+  // ==================== RESET DE TICKETS ====================
+
+  ticketResetMode: TicketResetMode = 'ALL';
+
+  selectedTicketService: number | null = null;
+
+  cancelTicketReset(): void {
+    this.ticketResetMode = 'ALL';
+    this.selectedTicketService = null;
+  }
+
+  confirmTicketReset(): void {
+
+    if (this.ticketResetMode === 'SERVICE' && this.selectedTicketService === null) return;
+
+    if (this.ticketResetMode === 'ALL') {
+      this.ticketState.resetAllCodes();
+      this.showTicketResetModal = false;
+    } else if (this.ticketResetMode === 'SERVICE' && this.selectedTicketService !== null) {
+      this.ticketState.resetCodeById(this.selectedTicketService.toString());
+      this.selectedTicketService = null;
+      this.showTicketResetModal = false;
+    }
+  }
+
+  getSelectedTicketServiceName(): string {
+    const selectedService = this.serviceNamesAndDepartments().find(
+      service =>
+        String(service.serviceManagementId) ===
+        String(this.selectedTicketService)
+    );
+
+    return selectedService?.name ?? 'selecionado';
   }
 
 }

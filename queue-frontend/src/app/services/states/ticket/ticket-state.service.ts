@@ -29,6 +29,12 @@ export class TicketStateService {
   public callCustomerStatus = signal<'success' | 'error' | 'default'>('default');
   public callCustomerMessage = signal('');
 
+  public resetCodeStatus = signal<'success' | 'error' | 'default'>('default');
+  public resetCodeMessage = signal('');
+
+  public resetAllCodesStatus = signal<'success' | 'error' | 'default'>('default');
+  public resetAllCodesMessage = signal('');
+
   // Variables
   public ticketsForAttendance = signal<ResponseTicketsForAttendanceDto[]>([]);
   public historyTicketsForAttendant = signal<ResponseTicketsForAttendanceDto[]>([]);
@@ -131,6 +137,24 @@ export class TicketStateService {
     });
   }
 
+  resetCodeById(serviceManagementId: string) {
+    this.http.resetCodeById(serviceManagementId).subscribe({
+      next: () => {
+        this.resetCodeStatus.set('success');
+        this.resetCodeMessage.set('Código resetado com sucesso!');
+      }
+    });
+  }
+
+  resetAllCodes() {
+    this.http.resetAllCodes().subscribe({
+      next: () => {
+        this.resetAllCodesStatus.set('success');
+        this.resetAllCodesMessage.set('Todos os códigos resetados com sucesso!');
+      }
+    });
+  }
+
   // PAGINATION TICKETS
   nextPageTickets() {
 
@@ -183,6 +207,8 @@ export class TicketStateService {
   resetStatus() {
     this.createStatus.set('default');
     this.deleteStatus.set('default');
+    this.resetCodeStatus.set('default');
+    this.resetAllCodesStatus.set('default');
   }
 
   // WEBSOCKET

@@ -458,6 +458,20 @@ export class HttpService {
     );
   }
 
+  public resetCodeById(serviceManagementId: string): Observable<void> {
+    return this.http.patch<void>(
+      `${this.API_URL}/tickets/reset/${serviceManagementId}`,
+      { withCredentials: true }
+    );
+  }
+
+  public resetAllCodes(): Observable<void> {
+    return this.http.patch<void>(
+      `${this.API_URL}/tickets/reset`,
+      { withCredentials: true }
+    );
+  }
+
   // ============================================================
   // ATTENDANCES
   // ============================================================
@@ -488,7 +502,7 @@ export class HttpService {
   // ============================================================
   // PHOTO USER
   // ============================================================
-  
+
   userUpdatePhoto(photo: File): Observable<void> {
     const formData = new FormData();
 
