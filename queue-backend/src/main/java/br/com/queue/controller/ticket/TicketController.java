@@ -107,4 +107,18 @@ public class TicketController {
             @PathVariable String ticketId) {
         return ResponseEntity.ok(this.ticketService.cancelTicket(token, ticketId));
     }
+
+    @PatchMapping("/reset/{serviceManagementId}")
+    public ResponseEntity<Void> resetCodeById(@PathVariable("serviceManagementId") String serviceManagementId) {
+
+        this.ticketService.resetCodeById(serviceManagementId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/reset")
+    public ResponseEntity<Void> resetAllCodes() {
+
+        this.ticketService.resetAllCodes();
+        return ResponseEntity.ok().build();
+    }
 }

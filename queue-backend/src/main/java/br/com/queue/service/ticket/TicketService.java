@@ -304,14 +304,20 @@ public class TicketService {
 
     // ============================================ RESET CODE ========================================
 
-    public void resetCode(String ticketId) {
-        log.info("Resetando código do ticket: {}", ticketId);
+    @Transactional
+    public void resetCodeById(String serviceManagementId) {
 
-        var entity = this.findTicketById(ticketId);
-        entity.setCallNumber(0);
-        this.ticketRepository.save(entity);
+        var service = this.findServiceManagementById(serviceManagementId);
 
-        log.info("Código resetado com sucesso para o ticket: {}", ticketId);
+        service.setLastTicketNumber(0L);
+    }
+
+    @Transactional
+    public void resetAllCodes() {
+
+        var services = this.serviceManagementRepository.findAll();
+
+        services.forEach(service -> service.setLastTicketNumber(0L));
     }
 
     // ================================================================================================

@@ -451,23 +451,6 @@ class TicketServiceTest {
 
 
     @Test
-    void deveResetarCodigo() {
-
-        Ticket ticket = criarTicket();
-        ticket.setCallNumber(15);
-
-        when(ticketRepository.findById("ticket-1"))
-                .thenReturn(Optional.of(ticket));
-
-        service.resetCode("ticket-1");
-
-        assertEquals(0, ticket.getCallNumber());
-
-        verify(ticketRepository).save(ticket);
-    }
-
-
-    @Test
     void deveRetornarExcecaoQuandoTicketNaoExiste() {
 
         when(ticketRepository.findById("ticket-1"))
