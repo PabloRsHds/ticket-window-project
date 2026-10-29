@@ -416,7 +416,7 @@ export class HomeComponent {
 
     if (section === 'user') {
       timer(500).subscribe(() => {
-        this.userState.modalRegister.set(true);
+        this.userState.setModalRegister();
       });
     }
 
@@ -496,7 +496,7 @@ export class HomeComponent {
   }
 
   public verifyModalHeader(): boolean {
-    
+
     if (this.activeSection() === 'inicio' && this.isMobile()) {
       return true;
     }

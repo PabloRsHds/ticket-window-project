@@ -40,6 +40,8 @@ export class TableUsersComponent implements OnInit {
   /** Informações detalhadas de um usuário */
   public userInfo = this.userState.userInfo;
 
+  public resetUserInfo = this.userState.resetUserInfo;
+
   /** Lista de nomes de serviços e departamentos */
   public serviceNamesAndDepartments = this.serviceState.serviceNamesAndDepartments;
 
@@ -65,6 +67,8 @@ export class TableUsersComponent implements OnInit {
 
   /** Modal de registro de usuário */
   public modalRegister = this.userState.modalRegister;
+
+  public setModalRegister = this.userState.setModalRegister();
 
   /** Modal de atualização de usuário */
   public modalUpdate: boolean = false;
@@ -185,7 +189,7 @@ export class TableUsersComponent implements OnInit {
         this.userState.resetStatus();
         this.registerForm.reset();
         this.currentStep = 1;
-        this.modalRegister.set(false);
+        this.setModalRegister
       }
 
       if (this.userState.registerStatus() === 'error') {
@@ -210,7 +214,7 @@ export class TableUsersComponent implements OnInit {
           panelClass: ['snackbar-success']
         });
         this.userState.resetStatus();
-        this.userInfo.set(null);
+        this.resetUserInfo();
         this.modalUpdate = false;
         this.selectedServices = [];
       }
@@ -237,7 +241,7 @@ export class TableUsersComponent implements OnInit {
           panelClass: ['snackbar-success']
         });
         this.userState.resetStatus();
-        this.userInfo.set(null);
+        this.resetUserInfo();
         this.modalDelete = false;
       }
 
@@ -762,7 +766,7 @@ export class TableUsersComponent implements OnInit {
    * Carrega lista de serviços para seleção
    */
   public openModalRegister(): void {
-    this.modalRegister.set(true);
+    this.setModalRegister;
     this.serviceState.loadServiceNamesAndDepartments();
     this.departmentState.loadDepartmentsForCreateUser();
   }
@@ -772,7 +776,7 @@ export class TableUsersComponent implements OnInit {
    * Reseta formulário e passo atual
    */
   public closeModalRegister(): void {
-    this.modalRegister.set(false);
+    this.setModalRegister;
     this.registerForm.reset();
     this.currentStep = 1;
   }
@@ -1050,7 +1054,7 @@ export class TableUsersComponent implements OnInit {
 
   // Service for update services list when user role is changed to ATTENDANT
   public listServicesForAttendant = computed(() => {
-    
+
     const user = this.userInfo();
 
     if (!user) return [];

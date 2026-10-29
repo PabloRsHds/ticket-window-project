@@ -10,6 +10,7 @@ import { ResponseUsersCreatedByMonthStatisticsDto } from '../../../dtos/users/st
 import { ResponseServicesByUserStatisticsDto } from '../../../dtos/users/statistics/ResponseServicesByUserStatisticsDto';
 import { ResponseUsersByRoleStatisticsDto } from '../../../dtos/users/statistics/ResponseUsersByRoleStatisticsDto';
 import { HttpErrorResponse } from '@angular/common/http';
+import { catchError, EMPTY, finalize, tap, throwError } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -19,84 +20,134 @@ export class UserStateService {
   // Injections
   private http = inject(HttpService);
 
-  // Signals
-  public users = signal<ResponseAllUsersDto[]>([]);
-  public userLogged = signal<ResponseUserInfoDto | null>(null);
-  public userInfo = signal<ResponseUserInfoDto | null>(null);
+  // User Signals
+  private _users = signal<ResponseAllUsersDto[]>([]);
+  private _userLogged = signal<ResponseUserInfoDto | null>(null);
+  private _userInfo = signal<ResponseUserInfoDto | null>(null);
+  private _loadUserByToken = signal<boolean>(false);
 
-  // Messages
-  public registerMessage = signal('');
-  public registerStatus = signal<'success' | 'error' | 'default'>('default');
-  public updateMessage = signal('');
-  public updateStatus = signal<'success' | 'error' | 'default'>('default');
-  public deleteMessage = signal('');
-  public deleteStatus = signal<'success' | 'error' | 'default'>('default');
+  // User Signals readOnly
+  public readonly users = this._users.asReadonly();
+  public readonly userLogged = this._userLogged.asReadonly();
+  public readonly userInfo = this._userInfo.asReadonly();
+  public readonly loadUserByToken = this._loadUserByToken.asReadonly();
 
-  public photoMessage = signal('');
-  public photoStatus = signal<'success' | 'error' | 'default'>('default');
+  // Messages Signals
+  private _registerMessage = signal('');
+  private _registerStatus = signal<'success' | 'error' | 'default'>('default');
 
-  public userPhoto = signal<string | null>(null);
+  private _updateMessage = signal('');
+  private _updateStatus = signal<'success' | 'error' | 'default'>('default');
 
-  // Loads
-  public loadUserByToken = signal<boolean>(false);
+  private _deleteMessage = signal('');
+  private _deleteStatus = signal<'success' | 'error' | 'default'>('default');
 
-  // Metricas
-  public countTotalUsersStatistics = signal<ResponseCountTotalUsersStatisticsDto | null>(null);
-  public userPercentagesStatistics = signal<ResponseUserPercentagesStatisticsDto | null>(null);
-  public usersCreatedByMonthStatistics = signal<ResponseUsersCreatedByMonthStatisticsDto[] | null>([]);
-  public countServicesByUsers = signal<ResponseServicesByUserStatisticsDto[] | null>([]);
-  public countRoleByUsers = signal<ResponseUsersByRoleStatisticsDto[] | null>([]);
+  // Messages Signals readOnly
+  public readonly registerMessage = this._registerMessage.asReadonly();
+  public readonly registerStatus = this._registerStatus.asReadonly();
+
+  public readonly updateMessage = this._updateMessage.asReadonly();
+  public readonly updateStatus = this._updateStatus.asReadonly();
+
+  public readonly deleteMessage = this._deleteMessage.asReadonly();
+  public readonly deleteStatus = this._deleteStatus.asReadonly();
+
+  // Photo Signals
+  private _photoMessage = signal('');
+  private _photoStatus = signal<'success' | 'error' | 'default'>('default');
+  private _userPhoto = signal<string | null>(null);
+
+  // Photo Signals readOnly
+  public readonly photoMessage = this._photoMessage.asReadonly();
+  public readonly photoStatus = this._photoStatus.asReadonly();
+  public readonly userPhoto = this._userPhoto.asReadonly();
+
+  // Metricas Signals
+  private _countTotalUsersStatistics = signal<ResponseCountTotalUsersStatisticsDto | null>(null);
+  private _userPercentagesStatistics = signal<ResponseUserPercentagesStatisticsDto | null>(null);
+  private _usersCreatedByMonthStatistics = signal<ResponseUsersCreatedByMonthStatisticsDto[] | null>([]);
+  private _countServicesByUsers = signal<ResponseServicesByUserStatisticsDto[] | null>([]);
+  private _countRoleByUsers = signal<ResponseUsersByRoleStatisticsDto[] | null>([]);
+
+  // Metricas Signals readOnly
+  public readonly countTotalUsersStatistics = this._countTotalUsersStatistics.asReadonly();
+  public readonly userPercentagesStatistics = this._userPercentagesStatistics.asReadonly();
+  public readonly usersCreatedByMonthStatistics = this._usersCreatedByMonthStatistics.asReadonly();
+  public readonly countServicesByUsers = this._countServicesByUsers.asReadonly();
+  public readonly countRoleByUsers = this._countRoleByUsers.asReadonly();
 
   public countTotalAdmin = computed(() => this.countRoleByUsers()?.find(u => u.role === 'ROLE_ADMIN')?.totalUsers || 0);
 
-  // ===================== PAGINATION =====================
+  // Pagination Signals
+  private _page = signal<number>(0);
+  private _totalElements = signal(0);
 
-  public page = signal<number>(0);
+  // Pagination Signals readOnly
+  public readonly page = this._page.asReadonly();
   public readonly size = 4;
-  public totalElements = signal(0);
+  public readonly totalElements = this._totalElements.asReadonly();
+
   public totalPages = computed(() =>
     Math.ceil(this.totalElements() / this.size)
   );
 
-  // ===================== SEARCH =====================
+  // Search Signals
+  private _search = signal('');
 
-  public search = signal('');
+  // Search Signals readOnly
+  public readonly search = this._search.asReadonly();
 
-  // =========== MODAL =============
-  public modalRegister = signal<Boolean>(false);
+  // modal Signals
+  private _modalRegister = signal<Boolean>(false);
+
+  // modal Signals readOnly
+  public readonly modalRegister = this._modalRegister.asReadonly();
 
   // Create user
   registerUser(request: RequestUserDto) {
-    this.http.createUser(request).subscribe({
-      next: () => {
 
-        this.registerMessage.set('Usuario criado com sucesso!');
-        this.registerStatus.set('success');
-        
-        this.loadingAllUsers();
-      },
-      error: (error: HttpErrorResponse) => {
-        this.registerMessage.set(error.error?.message || 'Erro ao criar usuario');
-        this.registerStatus.set('error');
-      }
-    })
+    this.http.createUser(request)
+      .pipe(
+        tap(() => {
+          this._registerMessage.set('Usuario criado com sucesso!');
+          this._registerStatus.set('success');
+          this.loadingAllUsers();
+        }),
+        catchError((error: HttpErrorResponse) => {
+          this._registerMessage.set(error.error?.message || 'Erro ao criar usuario');
+          this._registerStatus.set('error');
+
+          return EMPTY;
+        }),
+        finalize(() => {
+          this._modalRegister.set(false);
+        })
+      )
+      .subscribe();
   }
 
   updateUser(request: UpdateUserDto) {
 
-    this.http.updateUser(request).subscribe({
-      next: () => {
-        this.updateMessage.set('Usuario atualizado com sucesso!');
-        this.updateStatus.set('success');
+    this.http.updateUser(request)
+      .pipe(
+        tap(() => {
+          this._updateMessage.set('Usuario atualizado com sucesso!');
+          this._updateStatus.set('success');
 
-        this.loadingAllUsers();
-        this.getUserByToken();
-      },
-      error: (error: HttpErrorResponse) => {
-        this.updateMessage.set(error.error?.message || 'Erro ao atualizar usuario');
-        this.updateStatus.set('error');
-      }
-    })
+          this.loadingAllUsers();
+          this.getUserByToken();
+        }),
+        catchError((error: HttpErrorResponse) => {
+          this._updateMessage.set(error.error?.message || 'Erro ao atualizar usuario');
+          this._updateStatus.set('error');
+
+          return EMPTY;
+        }),
+        finalize(() => {
+          console.log('Requisição de atualização finalizada.');
+        })
+      )
+      .subscribe();
   }
 
   deleteUser() {
@@ -104,85 +155,123 @@ export class UserStateService {
     const userId = this.userInfo()?.userId;
     if (!userId) return;
 
-    this.http.deleteUser(userId).subscribe({
-      next: () => {
-        this.deleteMessage.set('Usuario deletado com sucesso!');
-        this.deleteStatus.set('success');
-        this.users.update(users => {
-          this.totalElements.update(total => total - 1);
-          return users.filter(u => u.userId !== userId)}
-        );
-      },
-      error: (error: HttpErrorResponse) => {
-        this.deleteMessage.set(error.error?.message || 'Erro ao deletar usuario');
-        this.deleteStatus.set('error');
-      }
-    })
+    this.http.deleteUser(userId)
+      .pipe(
+        tap(() => {
+          this._deleteMessage.set('Usuario deletado com sucesso!');
+          this._deleteStatus.set('success');
+
+          this._users.update(users => {
+            this._totalElements.update(total => total - 1);
+            return users.filter(u => u.userId !== userId);
+          });
+        }),
+        catchError((error: HttpErrorResponse) => {
+          this._deleteMessage.set(error.error?.message || 'Erro ao deletar usuario');
+          this._deleteStatus.set('error');
+
+          return EMPTY;
+        }),
+        finalize(() => {
+          console.log('Requisição de exclusão finalizada.');
+        })
+      )
+      .subscribe();
   }
 
   // All users
   loadingAllUsers() {
 
     this.http.getAllUsers(
-      this.page(),
-      this.size,
-      this.search()
-    ).subscribe({
-      next: (response) => {
-
-        this.users.set(response.content);
-        this.totalElements.set(response.totalElements);
-      },
-      error: (error: HttpErrorResponse) => {
-        console.error('Erro ao carregar usuarios', error);
-      }
-    });
+        this.page(),
+        this.size,
+        this.search()
+      )
+      .pipe(
+        tap((response) => {
+          this._users.set(response.content);
+          this._totalElements.set(response.totalElements);
+        }),
+        catchError((error: HttpErrorResponse) => {
+          console.error('Erro ao carregar usuarios', error);
+          return EMPTY;
+        }),
+        finalize(() => {
+          console.log('Requisição de carregamento finalizada.');
+        })
+      )
+      .subscribe();
   }
 
   // ===== LOAD STATISTICS =====
   loadStatistics() {
-    this.http.getUserStatistics().subscribe({
-      next: (response) => {
-        this.countTotalUsersStatistics.set(response.countTotalUsersStatistics);
-        this.userPercentagesStatistics.set(response.userPercentagesStatistics);
-        this.usersCreatedByMonthStatistics.set(response.usersCreatedByMonthStatistics);
-        this.countServicesByUsers.set(response.countServicesByUsers);
-        this.countRoleByUsers.set(response.countRoleByUsers);
-      }
-    })
+
+    this.http.getUserStatistics()
+      .pipe(
+        tap((response) => {
+          this._countTotalUsersStatistics.set(response.countTotalUsersStatistics);
+          this._userPercentagesStatistics.set(response.userPercentagesStatistics);
+          this._usersCreatedByMonthStatistics.set(response.usersCreatedByMonthStatistics);
+          this._countServicesByUsers.set(response.countServicesByUsers);
+          this._countRoleByUsers.set(response.countRoleByUsers);
+        }),
+        catchError((error: HttpErrorResponse) => {
+          console.error('Erro ao carregar estatísticas de usuarios', error);
+          return EMPTY;
+        }),
+        finalize(() => {
+          console.log('Requisição de carregamento finalizada.');
+        })
+      )
+      .subscribe();
   }
 
   // Get user by id
   getUserById(userId: string) {
 
-    this.http.getUserById(userId).subscribe({
-      next: (response) => {
-        this.userInfo.set(response);
-      }
-    })
+    this.http.getUserById(userId)
+      .pipe(
+        tap((response) => {
+          this._userInfo.set(response);
+        }),
+        catchError((error: HttpErrorResponse) => {
+          console.error('Erro ao carregar usuario', error);
+          return EMPTY;
+        }),
+        finalize(() => {
+          console.log('Requisição de carregamento finalizada.');
+        })
+      )
+      .subscribe();
   }
 
   // Get user by token
   getUserByToken() {
 
-    this.loadUserByToken.set(true);
+    this._loadUserByToken.set(true);
 
-    this.http.getUserByToken().subscribe({
-      next: (response) => {
+    this.http.getUserByToken()
+      .pipe(
+        tap((response) => {
+          this._userLogged.set(response);
 
-        this.userLogged.set(response);
-
-        if (response.hasPhoto) {
-          this.loadUserPhoto();
-        } else {
-          this.userPhoto.set(null);
-          this.loadUserByToken.set(false);
+          if (response.hasPhoto) {
+            this.loadUserPhoto();
+          } else {
+            this._userPhoto.set(null);
+            this._loadUserByToken.set(false);
+          }
+        }),
+        catchError((error: HttpErrorResponse) => {
+          this._loadUserByToken.set(false);
+          console.error('Erro ao carregar usuario', error);
+          return EMPTY;
+        }),
+        finalize(() => {
+          console.log('Requisição de carregamento finalizada.');
         }
-      },
-      error: () => {
-        this.loadUserByToken.set(false);
-      }
-    });
+      ))
+      .subscribe();
   }
 
   // ===================== PAGINATION =====================
@@ -191,7 +280,7 @@ export class UserStateService {
 
     if (this.page() + 1 >= this.totalPages()) return;
 
-    this.page.update(p => p + 1);
+    this._page.update(p => p + 1);
 
     this.loadingAllUsers();
   }
@@ -199,7 +288,7 @@ export class UserStateService {
   previousPage() {
 
     if (this.page() === 0) return;
-    this.page.update(p => p - 1);
+    this._page.update(p => p - 1);
 
     this.loadingAllUsers();
   }
@@ -207,7 +296,7 @@ export class UserStateService {
   goToPage(page: number) {
 
     if (page < 0 || page >= this.totalPages()) return;
-    this.page.set(page);
+    this._page.set(page);
 
     this.loadingAllUsers();
   }
@@ -216,9 +305,9 @@ export class UserStateService {
 
   setSearch(value: string) {
 
-    this.search.set(value);
+    this._search.set(value);
     // volta pra primeira página
-    this.page.set(0);
+    this._page.set(0);
 
     this.loadingAllUsers();
   }
@@ -230,53 +319,71 @@ export class UserStateService {
   }
 
   resetStatus() {
-    this.registerStatus.set('default');
-    this.updateStatus.set('default');
-    this.deleteStatus.set('default');
+    this._registerStatus.set('default');
+    this._updateStatus.set('default');
+    this._deleteStatus.set('default');
   }
 
   resetInfoUser() {
-    this.userInfo.set(null);
+    this._userInfo.set(null);
   }
 
   updatePhoto(photo: File) {
 
-    this.http.userUpdatePhoto(photo).subscribe({
-      next: () => {
+    this.http.userUpdatePhoto(photo)
+      .pipe(
 
-        this.photoMessage.set('Foto atualizada com sucesso!');
-        this.photoStatus.set('success');
-        this.loadUserPhoto();
-      },
-
-      error: (error: HttpErrorResponse) => {
-
-        this.photoMessage.set(
-          error.error?.message || 'Erro ao atualizar foto'
-        );
-
-        this.photoStatus.set('error');
-      }
-    });
+        tap(() => {
+          this._photoMessage.set('Foto atualizada com sucesso!');
+          this._photoStatus.set('success');
+          this.loadUserPhoto();
+        }),
+        catchError((error: HttpErrorResponse) => {
+          this._photoMessage.set(
+            error.error?.message || 'Erro ao atualizar foto'
+          );
+          this._photoStatus.set('error');
+          return EMPTY;
+        }),
+        finalize(() => {
+          console.log('Requisição de atualização finalizada.');
+        })
+      )
+      .subscribe();
   }
 
   loadUserPhoto() {
-    this.http.getUserPhoto().subscribe({
-      next: (blob) => {
 
-        // libera a URL antiga
-        const oldUrl = this.userPhoto();
-        if (oldUrl) {
-          URL.revokeObjectURL(oldUrl);
-        }
+    this.http.getUserPhoto()
+      .pipe(
 
-        const imageUrl = URL.createObjectURL(blob);
-        this.userPhoto.set(imageUrl);
-        this.loadUserByToken.set(false);
-      },
-      error: () => {
-        this.loadUserByToken.set(false);
-      }
-    });
+        tap((blob) => {
+          const oldUrl = this.userPhoto();
+          if (oldUrl) {
+            URL.revokeObjectURL(oldUrl);
+          }
+
+          const imageUrl = URL.createObjectURL(blob);
+          this._userPhoto.set(imageUrl);
+          this._loadUserByToken.set(false);
+        }),
+        catchError((error: HttpErrorResponse) => {
+          this._loadUserByToken.set(false);
+          console.error('Erro ao carregar foto', error);
+          return EMPTY;
+        }),
+        finalize(() => {
+          console.log('Requisição de carregamento finalizada.');
+        })
+      )
+      .subscribe();
+  }
+
+  setModalRegister() {
+    this._modalRegister.set(!this.modalRegister);
+  }
+
+  resetUserInfo() {
+    this._userInfo.set(null);
   }
 }
