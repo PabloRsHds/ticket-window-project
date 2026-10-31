@@ -66,6 +66,8 @@ export class TableDepartmentsComponent implements OnInit {
   /** Modal de registro de departamento */
   public modalRegister = this.departmentState.modalRegister;
 
+  public setModalRegister = this.departmentState.setModalRegister;
+
   /** Modal de atualização de departamento */
   public modalUpdate: boolean = false;
 
@@ -246,14 +248,14 @@ export class TableDepartmentsComponent implements OnInit {
    */
   openModalRegister() {
     this.initializeRegisterForm();
-    this.modalRegister.set(true);
+    this.setModalRegister();
   }
 
   /**
    * Fecha modal de registro de departamento
    */
   closeModalRegister() {
-    this.modalRegister.set(false);
+    this.setModalRegister();
   }
 
   /**

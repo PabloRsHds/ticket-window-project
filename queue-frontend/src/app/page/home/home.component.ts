@@ -404,7 +404,7 @@ export class HomeComponent {
     // Aguarda 500ms para troca de seção antes de abrir modal
     if (section === 'department') {
       timer(500).subscribe(() => {
-        this.departmentState.modalRegister.set(true);
+        this.departmentState.setModalRegister();
       });
     }
 

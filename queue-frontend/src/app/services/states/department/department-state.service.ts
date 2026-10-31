@@ -1,264 +1,448 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
 
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { HttpService } from '../../backend/http.service';
 
 import { ResponseDepartmentDto } from '../../../dtos/department/ResponseDepartmentDto';
 import { CreateDepartmentDto } from '../../../dtos/department/CreateDepartmentDto';
 import { UpdateDepartmentDto } from '../../../dtos/department/UpdateDepartmentDto';
+import { DepartmentNameAndId } from '../../../dtos/department/DepartmentNameAndId';
+
 import { ResponseCountTotalDepartmentsStatisticsDto } from '../../../dtos/department/statistics/ResponseCountTotalDepartmentsStatisticsDto';
 import { ResponseCountServicesByDepartmentsStatisticsDto } from '../../../dtos/department/statistics/ResponseCountServicesByDepartmentsStatisticsDto';
 import { ResponseDepartmentPercentagesStatisticsDto } from '../../../dtos/department/statistics/ResponseDepartmentPercentagesStatisticsDto';
 import { ResponseDepartmentsCreatedByMonthStatisticsDto } from '../../../dtos/department/statistics/ResponseDepartmentsCreatedByMonthStatisticsDto';
+
 import { HttpErrorResponse } from '@angular/common/http';
-import { DepartmentNameAndId } from '../../../dtos/department/DepartmentNameAndId';
+import { catchError, EMPTY, finalize, tap } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class DepartmentStateService {
 
-  // ===================== INJECTIONS =====================
+  // ============================================================
+  // INJECTIONS
+  // ============================================================
 
   private http = inject(HttpService);
 
-  // ===================== DATA =====================
+  // ============================================================
+  // DEPARTMENT SIGNALS
+  // ============================================================
 
-  public departments = signal<ResponseDepartmentDto[]>([]);
-  public departmentInfo = signal<ResponseDepartmentDto | null>(null);
-  public departmentNameAndId = signal<DepartmentNameAndId[] | null>([]);
+  private _departments = signal<ResponseDepartmentDto[]>([]);
+  private _departmentInfo = signal<ResponseDepartmentDto | null>(null);
+  private _departmentNameAndId = signal<DepartmentNameAndId[]>([]);
 
-  // Statistics
-  public countServicesByDepartment  = signal<ResponseCountServicesByDepartmentsStatisticsDto[] | null>([]);
-  public countTotalDepartment = signal<ResponseCountTotalDepartmentsStatisticsDto | null>(null);
-  public getPercentagesByDepartment = signal<ResponseDepartmentPercentagesStatisticsDto | null>(null);
-  public departmentsCreatedByMonth = signal<ResponseDepartmentsCreatedByMonthStatisticsDto[] | null>([]);
+  // DEPARTMENT SIGNALS READONLY
+  public readonly departments = this._departments.asReadonly();
+  public readonly departmentInfo = this._departmentInfo.asReadonly();
+  public readonly departmentNameAndId = this._departmentNameAndId.asReadonly();
 
+  // ============================================================
+  // MESSAGES SIGNALS
+  // ============================================================
 
-  // Modal
-  public modalRegister = signal<Boolean>(false);
+  private _registerMessage = signal('');
+  private _registerStatus = signal<'success' | 'error' | 'default'>('default');
 
-  // ===================== LOADING =====================
+  private _updateMessage = signal('');
+  private _updateStatus = signal<'success' | 'error' | 'default'>('default');
 
-  public loading = signal(false);
+  private _deleteMessage = signal('');
+  private _deleteStatus = signal<'success' | 'error' | 'default'>('default');
 
-  // ===================== RESPONSE STATUS =====================
+  private _loadMessage = signal('');
+  private _loadStatus = signal<'loading' | 'success' | 'error' | 'default'>('default');
 
-  public registerMessage = signal('');
-  public registerStatus = signal<'success' | 'error' | 'default'>('default');
+  // MESSAGES SIGNALS READONLY
+  public readonly registerMessage = this._registerMessage.asReadonly();
+  public readonly registerStatus = this._registerStatus.asReadonly();
 
-  public updateMessage = signal('');
-  public updateStatus = signal<'success' | 'error' | 'default'>('default');
+  public readonly updateMessage = this._updateMessage.asReadonly();
+  public readonly updateStatus = this._updateStatus.asReadonly();
 
-  public deleteMessage = signal('');
-  public deleteStatus = signal<'success' | 'error' | 'default'>('default');
+  public readonly deleteMessage = this._deleteMessage.asReadonly();
+  public readonly deleteStatus = this._deleteStatus.asReadonly();
 
-  // ====================== LOADING ===========================
-  
-  public allDepartmentsLoading = signal(false);
-  public registerLoading = signal(false);
-  public updateLoading = signal(false);
-  public deleteLoading = signal(false);
+  public readonly loadMessage = this._loadMessage.asReadonly();
+  public readonly loadStatus = this._loadStatus.asReadonly();
 
-  // ===================== PAGINATION =====================
+  // ============================================================
+  // LOADING SIGNALS
+  // ============================================================
 
-  public page = signal(0);
-  public readonly size = 4;
-  public totalElements = signal(0);
+  private _allDepartmentsLoading = signal(false);
+  private _registerLoading = signal(false);
+  private _updateLoading = signal(false);
+  private _deleteLoading = signal(false);
+  private _statisticsLoading = signal(false);
+  private _departmentInfoLoading = signal(false);
+  private _departmentNamesLoading = signal(false);
+
+  // LOADING SIGNALS READONLY
+  public readonly allDepartmentsLoading = this._allDepartmentsLoading.asReadonly();
+  public readonly registerLoading = this._registerLoading.asReadonly();
+  public readonly updateLoading = this._updateLoading.asReadonly();
+  public readonly deleteLoading = this._deleteLoading.asReadonly();
+  public readonly statisticsLoading = this._statisticsLoading.asReadonly();
+  public readonly departmentInfoLoading = this._departmentInfoLoading.asReadonly();
+  public readonly departmentNamesLoading = this._departmentNamesLoading.asReadonly();
+
+  // ============================================================
+  // PAGINATION SIGNALS
+  // ============================================================
+
+  private _page = signal<number>(0);
+  private _size = signal<number>(4);
+  private _totalElements = signal<number>(0);
+
+  // PAGINATION SIGNALS READONLY
+  public readonly page = this._page.asReadonly();
+  public readonly size = this._size.asReadonly();
+  public readonly totalElements = this._totalElements.asReadonly();
 
   public totalPages = computed(() =>
-    Math.ceil(this.totalElements() / this.size)
+    Math.ceil(this.totalElements() / this.size())
   );
 
-  // ===================== SEARCH =====================
+  // ============================================================
+  // SEARCH SIGNALS
+  // ============================================================
 
-  public search = signal('');
+  private _search = signal<string>('');
 
-  // ===================== LOAD =====================
+  // SEARCH SIGNALS READONLY
+  public readonly search = this._search.asReadonly();
+
+  // ============================================================
+  // MODAL SIGNALS
+  // ============================================================
+
+  private _modalRegister = signal<boolean>(false);
+
+  // MODAL SIGNALS READONLY
+  public readonly modalRegister = this._modalRegister.asReadonly();
+
+  // ============================================================
+  // STATISTICS SIGNALS
+  // ============================================================
+
+  private _countServicesByDepartment =
+    signal<ResponseCountServicesByDepartmentsStatisticsDto[] | null>([]);
+
+  private _countTotalDepartment =
+    signal<ResponseCountTotalDepartmentsStatisticsDto | null>(null);
+
+  private _getPercentagesByDepartment =
+    signal<ResponseDepartmentPercentagesStatisticsDto | null>(null);
+
+  private _departmentsCreatedByMonth =
+    signal<ResponseDepartmentsCreatedByMonthStatisticsDto[] | null>([]);
+
+  // STATISTICS SIGNALS READONLY
+  public readonly countServicesByDepartment =
+    this._countServicesByDepartment.asReadonly();
+
+  public readonly countTotalDepartment =
+    this._countTotalDepartment.asReadonly();
+
+  public readonly getPercentagesByDepartment =
+    this._getPercentagesByDepartment.asReadonly();
+
+  public readonly departmentsCreatedByMonth =
+    this._departmentsCreatedByMonth.asReadonly();
+
+  // ============================================================
+  // LOAD DEPARTMENTS
+  // ============================================================
 
   loadDepartments() {
 
-    this.allDepartmentsLoading.set(true);
+    this._allDepartmentsLoading.set(true);
+    this._loadStatus.set('loading');
+    this._loadMessage.set('Carregando departamentos...');
 
-    this.http.getAllDepartments(this.page(), this.size, this.search()).subscribe({
+    this.http.getAllDepartments(
+      this.page(),
+      this.size(),
+      this.search()
+    )
+      .pipe(
+        tap((response) => {
+          this._departments.set(response.content);
+          this._totalElements.set(response.totalElements);
 
-      next: (response) => {
-        this.departments.set(response.content);
-        this.loadStatistics();
-        this.totalElements.set(response.totalElements);
+          this._loadStatus.set('success');
+          this._loadMessage.set('Departamentos carregados com sucesso!');
+        }),
 
-        this.allDepartmentsLoading.set(false);
-      },
+        catchError((error: HttpErrorResponse) => {
+          this._loadStatus.set('error');
+          this._loadMessage.set(
+            error.error?.message || 'Erro ao carregar departamentos'
+          );
 
-      error: (error: HttpErrorResponse) => {
-        console.error('Erro ao carregar departamentos', error.error?.message || error.message || 'Erro desconhecido');
-        this.allDepartmentsLoading.set(false);
-      }
-    });
+          console.error('Erro ao carregar departamentos:', error);
+
+          return EMPTY;
+        }),
+
+        finalize(() => {
+          this._allDepartmentsLoading.set(false);
+          console.log('Requisição de carregamento finalizada.');
+        })
+      )
+    .subscribe();
   }
 
-  loadDepartmentsForCreateUser() {
-    this.http.getAllDepartments(0, 9999).subscribe({
-      next: (response) => {
+  // ============================================================
+  // LOAD DEPARTMENTS FOR CREATE USER
+  // ============================================================
 
-        this.departmentNameAndId.set(
-          response.content
+  loadDepartmentsForCreateUser() {
+
+    this._departmentNamesLoading.set(true);
+
+    this.http.getAllDepartments(0, 9999)
+      .pipe(
+        tap((response) => {
+
+          const departments = response.content
             .filter(department => department.active)
             .map(department => ({
               departmentId: department.departmentId,
               name: department.name
-            }))
-        );
-      },
-      error: (error: HttpErrorResponse) => {
-        console.error(
-          'Erro ao carregar departamentos',
-          error.error?.message || error.message || 'Erro desconhecido'
-        );
-        this.allDepartmentsLoading.set(false);
-      }
-    });
+            }));
+
+          this._departmentNameAndId.set(departments);
+        }),
+
+        catchError((error: HttpErrorResponse) => {
+          console.error(
+            'Erro ao carregar departamentos:',
+            error.error?.message || error.message || 'Erro desconhecido'
+          );
+
+          return EMPTY;
+        }),
+
+        finalize(() => {
+          this._departmentNamesLoading.set(false);
+          console.log('Requisição de departamentos para cadastro finalizada.');
+        })
+      )
+    .subscribe();
   }
 
-  // ========== LOAD STATISTICS ==========
+  // ============================================================
+  // LOAD STATISTICS
+  // ============================================================
+
   loadStatistics() {
 
-    this.http.getDepartmentStatistics().subscribe({
-      next: (response) => {
-        this.countServicesByDepartment.set(response.countServicesByDepartments);
-        this.countTotalDepartment.set(response.countTotalDepartmentsStatistics);
-        this.getPercentagesByDepartment.set(response.departmentPercentagesStatistics);
-        this.departmentsCreatedByMonth.set(response.departmentsCreatedByMonthStatistics);
-      },
-      error: (error: HttpErrorResponse) => {
-        console.error('Erro ao carregar estatísticas', error.error?.message || error.message || 'Erro desconhecido');
-      }
-    })
+    this._statisticsLoading.set(true);
+
+    this.http.getDepartmentStatistics()
+      .pipe(
+        tap((response) => {
+          this._countServicesByDepartment.set(
+            response.countServicesByDepartments
+          );
+
+          this._countTotalDepartment.set(
+            response.countTotalDepartmentsStatistics
+          );
+
+          this._getPercentagesByDepartment.set(
+            response.departmentPercentagesStatistics
+          );
+
+          this._departmentsCreatedByMonth.set(
+            response.departmentsCreatedByMonthStatistics
+          );
+        }),
+
+        catchError((error: HttpErrorResponse) => {
+          console.error(
+            'Erro ao carregar estatísticas:',
+            error.error?.message || error.message || 'Erro desconhecido'
+          );
+
+          return EMPTY;
+        }),
+
+        finalize(() => {
+          this._statisticsLoading.set(false);
+          console.log('Requisição de estatísticas finalizada.');
+        })
+      )
+    .subscribe();
   }
 
-  // ===================== CREATE =====================
+  // ============================================================
+  // CREATE DEPARTMENT
+  // ============================================================
 
-  createDepartment(create: CreateDepartmentDto) {
-    this.registerLoading.set(true);
+  createDepartment(request: CreateDepartmentDto) {
 
-    this.http.createDepartment(create).subscribe({
-      next: (response) => {
+    this._registerLoading.set(true);
 
-        // volta pra primeira página
-        this.page.set(0);
+    this.http.createDepartment(request)
+      .pipe(
+        tap((response) => {
 
-        // backend recalcula paginação
-        this.departments.update(
-          departments => {
-            this.totalElements.update(total => total + 1);
+          this._registerMessage.set('Departamento criado com sucesso!');
+          this._registerStatus.set('success');
+
+          this._page.set(0);
+
+          this._departments.update(departments => {
+            this._totalElements.update(total => total + 1);
             return [response, ...departments];
-          } 
-        );
-        
-        this.loadStatistics();
+          });
 
-        this.registerMessage.set('Departamento criado com sucesso!');
-        this.registerStatus.set('success');
-        this.registerLoading.set(false);
-      },
+          this.loadStatistics();
+        }),
 
-      error: (error: HttpErrorResponse) => {
-        this.registerMessage.set(error.error?.message || 'Erro ao criar departamento');
-        this.registerStatus.set('error');
-        this.registerLoading.set(false);
-      }
-    });
+        catchError((error: HttpErrorResponse) => {
+          this._registerMessage.set(
+            error.error?.message || 'Erro ao criar departamento'
+          );
+
+          this._registerStatus.set('error');
+
+          return EMPTY;
+        }),
+
+        finalize(() => {
+          this._registerLoading.set(false);
+          console.log('Requisição de criação finalizada.');
+        })
+      )
+    .subscribe();
   }
 
-  // ===================== UPDATE =====================
+  // ============================================================
+  // UPDATE DEPARTMENT
+  // ============================================================
 
-  updateDepartment(department: UpdateDepartmentDto) {
-    this.updateLoading.set(true);
+  updateDepartment(request: UpdateDepartmentDto) {
 
-    this.http.updateDepartment(department).subscribe({
+    this._updateLoading.set(true);
 
-      next: (response) => {
+    this.http.updateDepartment(request)
+      .pipe(
+        tap((response) => {
 
-        // sincroniza com backend
-        this.departments.update( departments => 
-          departments.map(
-            department => 
+          this._updateMessage.set('Departamento atualizado com sucesso!');
+          this._updateStatus.set('success');
+
+          this._departments.update(departments =>
+            departments.map(department =>
               department.departmentId === response.departmentId
-              ? response : department     
-          )
-        );
-        
-        this.loadStatistics();
-        this.getInfoDepartment(response.departmentId);
+                ? response
+                : department
+            )
+          );
 
-        this.updateMessage.set('Departamento atualizado com sucesso!');
-        this.updateStatus.set('success');
-        this.updateLoading.set(false);
-      },
+          this.loadStatistics();
+          this.getInfoDepartment(response.departmentId);
+        }),
 
-      error: (error: HttpErrorResponse) => {
-        this.updateMessage.set(error.error?.message || 'Erro ao atualizar departamento');
-        this.updateStatus.set('error');
-        this.updateLoading.set(false);
-      }
-    });
+        catchError((error: HttpErrorResponse) => {
+          this._updateMessage.set(
+            error.error?.message || 'Erro ao atualizar departamento'
+          );
+
+          this._updateStatus.set('error');
+
+          return EMPTY;
+        }),
+
+        finalize(() => {
+          this._updateLoading.set(false);
+          console.log('Requisição de atualização finalizada.');
+        })
+      )
+    .subscribe();
   }
 
-  // ===================== DELETE =====================
+  // ============================================================
+  // DELETE DEPARTMENT
+  // ============================================================
 
   deleteDepartment(departmentId: string) {
-    this.deleteLoading.set(true);
 
-    this.http.deleteDepartment(departmentId).subscribe({
+    this._deleteLoading.set(true);
 
-      next: () => {
+    this.http.deleteDepartment(departmentId)
+      .pipe(
+        tap(() => {
 
-        // se deletou o último item da página
-        // volta uma página
-        if (this.departments().length === 1 && this.page() > 0
-        ) {
-          this.page.update(p => p - 1);
-        }
+          this._deleteMessage.set('Departamento excluído com sucesso!');
+          this._deleteStatus.set('success');
 
-        // backend recalcula tudo
-        this.departments.update(departments =>
-          departments.filter(department => {
-            this.totalElements.update(total => total - 1);
-            return department.departmentId !== departmentId;
-          })
-        );
-        this.loadStatistics();
+          // Volta uma página caso tenha excluído o último item
+          if (this.departments().length === 1 && this.page() > 0) {
+            this._page.update(page => page - 1);
+          }
 
-        // limpa detalhe
-        this.departmentInfo.set(null);
+          this._departments.update(departments => {
+            this._totalElements.update(total => total - 1);
 
-        this.deleteMessage.set('Departamento excluído com sucesso!');
-        this.deleteStatus.set('success');
-        this.deleteLoading.set(false);
-      },
+            return departments.filter(
+              department => department.departmentId !== departmentId
+            );
+          });
 
-      error: (error: HttpErrorResponse) => {
-        this.deleteMessage.set(error.error?.message || 'Erro ao excluir departamento');
-        this.deleteStatus.set('error');
-        this.deleteLoading.set(false);
-      }
-    });
+          this.loadStatistics();
+
+          this._departmentInfo.set(null);
+        }),
+
+        catchError((error: HttpErrorResponse) => {
+          this._deleteMessage.set(
+            error.error?.message || 'Erro ao excluir departamento'
+          );
+
+          this._deleteStatus.set('error');
+
+          return EMPTY;
+        }),
+
+        finalize(() => {
+          this._deleteLoading.set(false);
+          console.log('Requisição de exclusão finalizada.');
+        })
+      )
+    .subscribe();
   }
 
-  // ===================== DETAILS =====================
+  // ============================================================
+  // GET DEPARTMENT BY ID
+  // ============================================================
 
   getInfoDepartment(departmentId: string) {
 
-    const department = this.departments().find(department => department.departmentId === departmentId);
+    const department = this.departments().find(
+      department => department.departmentId === departmentId
+    );
 
     if (department) {
-      this.departmentInfo.set(department);
+      this._departmentInfo.set(department);
       return;
     }
+
+    this._departmentInfoLoading.set(true);
   }
 
-  // ================= GET DEPARTMENT NAMES =================
+  // ============================================================
+  // GET DEPARTMENT NAMES AND IDS
+  // ============================================================
 
   getDepartmentNameAndId() {
+
     const names = this.departments()
       .filter(department => department.active)
       .map(department => ({
@@ -266,16 +450,18 @@ export class DepartmentStateService {
         name: department.name
       }));
 
-    this.departmentNameAndId.set(names);
+    this._departmentNameAndId.set(names);
   }
 
-  // ===================== PAGINATION =====================
+  // ============================================================
+  // PAGINATION
+  // ============================================================
 
   nextPage() {
 
     if (this.page() + 1 >= this.totalPages()) return;
 
-    this.page.update(p => p + 1);
+    this._page.update(page => page + 1);
 
     this.loadDepartments();
   }
@@ -283,7 +469,8 @@ export class DepartmentStateService {
   previousPage() {
 
     if (this.page() === 0) return;
-    this.page.update(p => p - 1);
+
+    this._page.update(page => page - 1);
 
     this.loadDepartments();
   }
@@ -291,39 +478,97 @@ export class DepartmentStateService {
   goToPage(page: number) {
 
     if (page < 0 || page >= this.totalPages()) return;
-    this.page.set(page);
+
+    this._page.set(page);
 
     this.loadDepartments();
   }
 
-  // ===================== SEARCH =====================
+  // ============================================================
+  // SEARCH
+  // ============================================================
 
   setSearch(value: string) {
 
-    this.search.set(value);
-    // volta pra primeira página
-    this.page.set(0);
+    this._search.set(value);
+    this._page.set(0);
 
     this.loadDepartments();
   }
 
-  // ===================== RESET =====================
+  // ============================================================
+  // SET SIZE
+  // ============================================================
 
-  resetLoadDepartments() {
+  setSize(size: number) {
+
+    this._size.set(size);
+    this._page.set(0);
+
     this.loadDepartments();
+  }
+
+  // ============================================================
+  // MODAL REGISTER
+  // ============================================================
+
+  setModalRegister() {
+    this._modalRegister.update(value => !value);
+  }
+
+  // ============================================================
+  // REFRESH
+  // ============================================================
+
+  refresh() {
+    this.loadDepartments();
+  }
+
+  // ============================================================
+  // RESET STATUS
+  // ============================================================
+
+  resetRegisterStatus() {
+    this._registerStatus.set('default');
+    this._registerMessage.set('');
+  }
+
+  resetUpdateStatus() {
+    this._updateStatus.set('default');
+    this._updateMessage.set('');
+  }
+
+  resetDeleteStatus() {
+    this._deleteStatus.set('default');
+    this._deleteMessage.set('');
+  }
+
+  resetLoadStatus() {
+    this._loadStatus.set('default');
+    this._loadMessage.set('');
   }
 
   resetStatus() {
-    this.registerStatus.set('default');
-    this.updateStatus.set('default');
-    this.deleteStatus.set('default');
+    this.resetRegisterStatus();
+    this.resetUpdateStatus();
+    this.resetDeleteStatus();
+    this.resetLoadStatus();
   }
+
+  // ============================================================
+  // RESET DEPARTMENT INFO
+  // ============================================================
 
   resetDepartmentInfo() {
-    this.departmentInfo.set(null);
+    this._departmentInfo.set(null);
   }
 
+  // ============================================================
+  // RESET DEPARTMENT NAMES
+  // ============================================================
+
   resetDepartmentNames() {
-    this.departmentNameAndId.set([]);
+    this._departmentNameAndId.set([]);
   }
+
 }
