@@ -81,7 +81,7 @@ export class TableUnitComponent {
   // ==================== CICLO DE VIDA ====================
 
   ngOnInit() {
-    this.unitState.getAllUnits();
+    this.unitState.loadingAllUnits();
   }
 
   // ==================== CONSTRUTOR ====================

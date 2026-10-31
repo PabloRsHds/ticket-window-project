@@ -33,7 +33,7 @@ export class LoginComponent implements OnInit{
   /** Service para navegação entre rotas */
   public router = inject(Router);
 
-  public filterUnits = computed(() => 
+  public filterUnits = computed(() =>
     this.units().filter(unit => unit.active === true)
   );
 
@@ -54,7 +54,7 @@ export class LoginComponent implements OnInit{
 
   /* Inicializa as unidades disponíveis */
   ngOnInit(): void {
-    this.unitState.getAllUnitsForLogin();
+    this.unitState.loadingAllUnitsForLogin();
   }
 
   // ==================== CONSTRUTOR ====================

@@ -1,10 +1,12 @@
+
 import { computed, inject, Injectable, signal } from '@angular/core';
+import { HttpService } from '../../backend/http.service';
 import { ResponseUnitDto } from '../../../dtos/unit/ResponseUnitDto';
 import { CreateUnitDto } from '../../../dtos/unit/CreateUnitDto';
 import { UpdateUnitDto } from '../../../dtos/unit/UpdateUnitDto';
-import { HttpService } from '../../backend/http.service';
 import { PageResponse } from '../../../dtos/page/PageResponse';
 import { HttpErrorResponse } from '@angular/common/http';
+import { catchError, EMPTY, finalize, tap } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -14,116 +16,100 @@ export class UnitStateService {
   // INJECTIONS
   private http = inject(HttpService);
 
-  public createStatus = signal<'success' | 'error' | 'default'>('default');
-  public createMessage = signal('');
+  // ============================================================
+  // UNIT SIGNALS
+  // ============================================================
 
-  public updateStatus = signal<'success' | 'error' | 'default'>('default');
-  public updateMessage = signal('');
+  private _units = signal<ResponseUnitDto[]>([]);
+  private _unitById = signal<ResponseUnitDto | null>(null);
 
-  public deleteStatus = signal<'success' | 'error' | 'default'>('default');
-  public deleteMessage = signal('');
+  // UNIT SIGNALS READONLY
+  public readonly units = this._units.asReadonly();
+  public readonly unitById = this._unitById.asReadonly();
 
-  public loadStatus = signal<'loading' | 'success' | 'error' | 'default'>('default');
-  public loadMessage = signal('');
+  // ============================================================
+  // MESSAGES SIGNALS
+  // ============================================================
 
+  private _createMessage = signal('');
+  private _createStatus = signal<'success' | 'error' | 'default'>('default');
 
-  // Loading
-  public allUnitsLoading = signal(false);
-  public createLoading = signal(false);
-  public updateLoading = signal(false);
-  public deleteLoading = signal(false);
+  private _updateMessage = signal('');
+  private _updateStatus = signal<'success' | 'error' | 'default'>('default');
 
-  // PAGINATION
-  public page = signal<number>(0);
-  public size = signal<number>(4);
-  public search = signal<string>('');
-  public totalElements = signal<number>(0);
-  public totalPages = signal<number>(0);
+  private _deleteMessage = signal('');
+  private _deleteStatus = signal<'success' | 'error' | 'default'>('default');
 
-  // STATES
-  public units = signal<ResponseUnitDto[]>([]);
+  private _loadMessage = signal('');
+  private _loadStatus = signal<'loading' | 'success' | 'error' | 'default'>('default');
 
+  // MESSAGES SIGNALS READONLY
+  public readonly createMessage = this._createMessage.asReadonly();
+  public readonly createStatus = this._createStatus.asReadonly();
+
+  public readonly updateMessage = this._updateMessage.asReadonly();
+  public readonly updateStatus = this._updateStatus.asReadonly();
+
+  public readonly deleteMessage = this._deleteMessage.asReadonly();
+  public readonly deleteStatus = this._deleteStatus.asReadonly();
+
+  public readonly loadMessage = this._loadMessage.asReadonly();
+  public readonly loadStatus = this._loadStatus.asReadonly();
+
+  // ============================================================
+  // LOADING SIGNALS
+  // ============================================================
+
+  private _allUnitsLoading = signal(false);
+  private _createLoading = signal(false);
+  private _updateLoading = signal(false);
+  private _deleteLoading = signal(false);
+
+  // LOADING SIGNALS READONLY
+  public readonly allUnitsLoading = this._allUnitsLoading.asReadonly();
+  public readonly createLoading = this._createLoading.asReadonly();
+  public readonly updateLoading = this._updateLoading.asReadonly();
+  public readonly deleteLoading = this._deleteLoading.asReadonly();
+
+  // ============================================================
+  // PAGINATION SIGNALS
+  // ============================================================
+
+  private _page = signal<number>(0);
+  private _size = signal<number>(4);
+  private _totalElements = signal<number>(0);
+
+  // PAGINATION SIGNALS READONLY
+  public readonly page = this._page.asReadonly();
+  public readonly size = this._size.asReadonly();
+  public readonly totalElements = this._totalElements.asReadonly();
+
+  public totalPages = computed(() =>
+    Math.ceil(this.totalElements() / this.size())
+  );
+
+  // ============================================================
+  // SEARCH SIGNALS
+  // ============================================================
+
+  private _search = signal<string>('');
+
+  // SEARCH SIGNALS READONLY
+  public readonly search = this._search.asReadonly();
+
+  // ============================================================
   // COMPUTED
+  // ============================================================
+
   public totalUnits = computed(() => this.units().length);
-  public activeUnits = computed(() => this.units().filter(u => u.active).length);
-  public inactiveUnits = computed(() => this.units().filter(u => !u.active).length);
 
-  public unitById = signal<ResponseUnitDto | null>(null);
+  public activeUnits = computed(() =>
+    this.units().filter(unit => unit.active).length
+  );
 
-  // ============================================================
-  // GET ALL UNITS
-  // ============================================================
-
-  getAllUnits() {
-
-    this.allUnitsLoading.set(true);
-
-    this.http.getAllUnits(this.page(), this.size(), this.search()).subscribe({
-      next: (response) => {
-        this.units.set(response.content);
-        this.totalElements.set(response.totalElements);
-        this.totalPages.set(response.totalPages);
-        this.allUnitsLoading.set(false);
-        this.loadStatus.set('success');
-        this.loadMessage.set('Unidades carregadas com sucesso!');
-      },
-      error: (error: HttpErrorResponse) => {
-        this.loadStatus.set('error');
-        this.loadMessage.set(error.error?.message || 'Erro ao carregar unidades');
-        this.allUnitsLoading.set(false);
-      }
-    });
-  }
-
-  // ============================================================
-  // GET ALL UNITS FOR LOGIN (com size grande)
-  // ============================================================
-
-  getAllUnitsForLogin() {
-    this.loadStatus.set('loading');
-    this.loadMessage.set('Carregando unidades...');
-
-    this.http.getAllUnits(0, 999).subscribe({
-      next: (response: PageResponse<ResponseUnitDto>) => {
-        this.units.set(response.content);
-        this.totalElements.set(response.totalElements);
-        this.totalPages.set(response.totalPages);
-        this.loadStatus.set('success');
-        this.loadMessage.set('Unidades carregadas com sucesso!');
-      },
-      error: (error: HttpErrorResponse) => {
-        this.loadStatus.set('error');
-        this.loadMessage.set(error.error?.message || 'Erro ao carregar unidades');
-        console.error('Erro ao carregar unidades:', error);
-      }
-    });
-  }
-
-  // ============================================================
-  // GET UNIT BY ID
-  // ============================================================
-
-  getUnitById(unitId: string) {
-    const unit = this.units().find(unit => unit.unitId === unitId);
-
-    if (unit) {
-      this.unitById.set(unit);
-      return;
-    }
-
-    this.http.getUnitById(unitId).subscribe({
-      next: (response) => {
-        this.unitById.set(response);
-      },
-      error: (error: HttpErrorResponse) => {
-        console.error('Erro ao carregar unidade:', error);
-      }
-    });
-  }
-
-  resetUnitById() {
-    this.unitById.set(null);
-  }
+  public inactiveUnits = computed(() =>
+    this.units().filter(unit => !unit.active).length
+  );
 
   // ============================================================
   // CREATE UNIT
@@ -131,24 +117,35 @@ export class UnitStateService {
 
   createUnit(request: CreateUnitDto) {
 
-    this.createLoading.set(true);
+    this._createLoading.set(true);
 
-    this.http.createUnit(request).subscribe({
-      next: (response) => {
-        this.createStatus.set('success');
-        this.createMessage.set('Unidade criada com sucesso!');
-        this.units.update(units => {
-          this.totalElements.update(total => total + 1);
-          return [response, ...units];
-        });
-        this.createLoading.set(false);
-      },
-      error: (error: HttpErrorResponse) => {
-        this.createStatus.set('error');
-        this.createMessage.set(error.error?.message || 'Erro ao criar unidade');
-        this.createLoading.set(false);
-      }
-    });
+    this.http.createUnit(request)
+      .pipe(
+        tap((response) => {
+          this._createMessage.set('Unidade criada com sucesso!');
+          this._createStatus.set('success');
+
+          this._units.update(units => {
+            this._totalElements.update(total => total + 1);
+            return [response, ...units];
+          });
+        }),
+
+        catchError((error: HttpErrorResponse) => {
+          this._createMessage.set(
+            error.error?.message || 'Erro ao criar unidade'
+          );
+          this._createStatus.set('error');
+
+          return EMPTY;
+        }),
+
+        finalize(() => {
+          this._createLoading.set(false);
+          console.log('Requisição de criação finalizada.');
+        })
+      )
+      .subscribe();
   }
 
   // ============================================================
@@ -157,23 +154,36 @@ export class UnitStateService {
 
   updateUnit(request: UpdateUnitDto) {
 
-    this.updateLoading.set(true);
+    this._updateLoading.set(true);
 
-    this.http.updateUnit(request).subscribe({
-      next: (response) => {
-        this.updateStatus.set('success');
-        this.updateMessage.set('Unidade atualizada com sucesso!');
-        this.units.update(
-          units => units.map(unit => unit.unitId === response.unitId ? response : unit)
-        )
-        this.updateLoading.set(false);
-      },
-      error: (error: HttpErrorResponse) => {
-        this.updateStatus.set('error');
-        this.updateMessage.set(error.error?.message || 'Erro ao atualizar unidade');
-        this.updateLoading.set(false);
-      }
-    });
+    this.http.updateUnit(request)
+      .pipe(
+        tap((response) => {
+          this._updateMessage.set('Unidade atualizada com sucesso!');
+          this._updateStatus.set('success');
+
+          this._units.update(
+            units => units.map(unit =>
+              unit.unitId === response.unitId ? response : unit
+            )
+          );
+        }),
+
+        catchError((error: HttpErrorResponse) => {
+          this._updateMessage.set(
+            error.error?.message || 'Erro ao atualizar unidade'
+          );
+          this._updateStatus.set('error');
+
+          return EMPTY;
+        }),
+
+        finalize(() => {
+          this._updateLoading.set(false);
+          console.log('Requisição de atualização finalizada.');
+        })
+      )
+      .subscribe();
   }
 
   // ============================================================
@@ -182,95 +192,239 @@ export class UnitStateService {
 
   deleteUnit(unitId: string) {
 
-    this.deleteLoading.set(true);
+    this._deleteLoading.set(true);
 
-    this.http.deleteUnit(unitId).subscribe({
-      next: () => {
-        this.deleteStatus.set('success');
-        this.deleteMessage.set('Unidade excluída com sucesso!');
-        this.units.update(units => {
-          this.totalElements.update(total => total - 1);
-          return units.filter(unit => unit.unitId !== unitId);
-        });
-        this.unitById.set(null);
-        this.deleteLoading.set(false);
-      },
-      error: (error: HttpErrorResponse) => {
-        this.deleteStatus.set('error');
-        this.deleteMessage.set(error.error?.message || 'Erro ao excluir unidade');
-        console.error('Erro ao excluir unidade:', error);
-        this.deleteLoading.set(false);
-      }
-    });
+    this.http.deleteUnit(unitId)
+      .pipe(
+        tap(() => {
+          this._deleteMessage.set('Unidade excluída com sucesso!');
+          this._deleteStatus.set('success');
+
+          this._units.update(units => {
+            this._totalElements.update(total => total - 1);
+
+            return units.filter(unit => unit.unitId !== unitId);
+          });
+
+          this._unitById.set(null);
+        }),
+
+        catchError((error: HttpErrorResponse) => {
+          this._deleteMessage.set(
+            error.error?.message || 'Erro ao excluir unidade'
+          );
+          this._deleteStatus.set('error');
+
+          return EMPTY;
+        }),
+
+        finalize(() => {
+          this._deleteLoading.set(false);
+          console.log('Requisição de exclusão finalizada.');
+        })
+      )
+      .subscribe();
+  }
+
+  // ============================================================
+  // GET ALL UNITS
+  // ============================================================
+
+  loadingAllUnits() {
+
+    this._allUnitsLoading.set(true);
+    this._loadStatus.set('loading');
+    this._loadMessage.set('Carregando unidades...');
+
+    this.http.getAllUnits(
+      this.page(),
+      this.size(),
+      this.search()
+    )
+      .pipe(
+        tap((response: PageResponse<ResponseUnitDto>) => {
+          this._units.set(response.content);
+          this._totalElements.set(response.totalElements);
+
+          this._loadStatus.set('success');
+          this._loadMessage.set('Unidades carregadas com sucesso!');
+        }),
+
+        catchError((error: HttpErrorResponse) => {
+          this._loadStatus.set('error');
+          this._loadMessage.set(
+            error.error?.message || 'Erro ao carregar unidades'
+          );
+
+          console.error('Erro ao carregar unidades:', error);
+
+          return EMPTY;
+        }),
+
+        finalize(() => {
+          this._allUnitsLoading.set(false);
+          console.log('Requisição de carregamento finalizada.');
+        })
+      )
+      .subscribe();
+  }
+
+  // ============================================================
+  // GET ALL UNITS FOR LOGIN
+  // ============================================================
+
+  loadingAllUnitsForLogin() {
+
+    this._loadStatus.set('loading');
+    this._loadMessage.set('Carregando unidades...');
+
+    this.http.getAllUnits(0, 999)
+      .pipe(
+        tap((response: PageResponse<ResponseUnitDto>) => {
+          this._units.set(response.content);
+          this._totalElements.set(response.totalElements);
+
+          this._loadStatus.set('success');
+          this._loadMessage.set('Unidades carregadas com sucesso!');
+        }),
+
+        catchError((error: HttpErrorResponse) => {
+          this._loadStatus.set('error');
+          this._loadMessage.set(
+            error.error?.message || 'Erro ao carregar unidades'
+          );
+
+          console.error('Erro ao carregar unidades:', error);
+
+          return EMPTY;
+        }),
+
+        finalize(() => {
+          console.log('Requisição de carregamento para login finalizada.');
+        })
+      )
+      .subscribe();
+  }
+
+  // ============================================================
+  // GET UNIT BY ID
+  // ============================================================
+
+  getUnitById(unitId: string) {
+
+    const unit = this.units().find(unit => unit.unitId === unitId);
+
+    if (unit) {
+      this._unitById.set(unit);
+      return;
+    }
+
+    this.http.getUnitById(unitId)
+      .pipe(
+        tap((response) => {
+          this._unitById.set(response);
+        }),
+
+        catchError((error: HttpErrorResponse) => {
+          console.error('Erro ao carregar unidade:', error);
+          return EMPTY;
+        }),
+
+        finalize(() => {
+          console.log('Requisição de unidade por ID finalizada.');
+        })
+      )
+      .subscribe();
+  }
+
+  // ============================================================
+  // RESET UNIT BY ID
+  // ============================================================
+
+  resetUnitById() {
+    this._unitById.set(null);
   }
 
   // ============================================================
   // PAGINATION
   // ============================================================
 
-  setPage(page: number) {
-    this.page.set(page);
-    this.getAllUnits();
-  }
-
-  setSize(size: number) {
-    this.size.set(size);
-    this.page.set(0);
-    this.getAllUnits();
-  }
-
-  setSearch(search: string) {
-    this.search.set(search);
-    this.page.set(0);
-    this.getAllUnits();
-  }
-
   nextPage() {
-    if (this.page() + 1 < this.totalPages()) {
-      this.page.update(p => p + 1);
-      this.getAllUnits();
-    }
+
+    if (this.page() + 1 >= this.totalPages()) return;
+
+    this._page.update(page => page + 1);
+
+    this.loadingAllUnits();
   }
 
   previousPage() {
-    if (this.page() > 0) {
-      this.page.update(p => p - 1);
-      this.getAllUnits();
-    }
+
+    if (this.page() === 0) return;
+
+    this._page.update(page => page - 1);
+
+    this.loadingAllUnits();
   }
 
   goToPage(page: number) {
-    if (page >= 0 && page < this.totalPages()) {
-      this.page.set(page);
-      this.getAllUnits();
-    }
+
+    if (page < 0 || page >= this.totalPages()) return;
+
+    this._page.set(page);
+
+    this.loadingAllUnits();
   }
 
   // ============================================================
-  // RESETS
+  // SEARCH
+  // ============================================================
+
+  setSearch(value: string) {
+
+    this._search.set(value);
+    this._page.set(0);
+
+    this.loadingAllUnits();
+  }
+
+  // ============================================================
+  // SET SIZE
+  // ============================================================
+
+  setSize(size: number) {
+
+    this._size.set(size);
+    this._page.set(0);
+
+    this.loadingAllUnits();
+  }
+
+  // ============================================================
+  // RESET STATUS
   // ============================================================
 
   resetCreateStatus() {
-    this.createStatus.set('default');
-    this.createMessage.set('');
+    this._createStatus.set('default');
+    this._createMessage.set('');
   }
 
   resetUpdateStatus() {
-    this.updateStatus.set('default');
-    this.updateMessage.set('');
+    this._updateStatus.set('default');
+    this._updateMessage.set('');
   }
 
   resetDeleteStatus() {
-    this.deleteStatus.set('default');
-    this.deleteMessage.set('');
+    this._deleteStatus.set('default');
+    this._deleteMessage.set('');
   }
 
   resetLoadStatus() {
-    this.loadStatus.set('default');
-    this.loadMessage.set('');
+    this._loadStatus.set('default');
+    this._loadMessage.set('');
   }
 
-  resetAllStatus() {
+  resetStatus() {
     this.resetCreateStatus();
     this.resetUpdateStatus();
     this.resetDeleteStatus();
@@ -282,6 +436,6 @@ export class UnitStateService {
   // ============================================================
 
   refreshUnits() {
-    this.getAllUnits();
+    this.loadingAllUnits();
   }
 }
