@@ -86,6 +86,8 @@ export class TableServicesComponent implements OnInit{
   /** Modal de registro de serviço */
   public modalRegister = this.serviceState.modalRegister;
 
+  public setModalRegister = this.serviceState.setModalRegister;
+
   /** Modal de atualização de serviço */
   public modalUpdate: boolean = false;
 
@@ -137,7 +139,7 @@ export class TableServicesComponent implements OnInit{
 
         this.registerForm.reset();
         this.serviceState.resetStatus();
-        this.modalRegister.set(false);
+        this.setModalRegister();
 
         this.snackBar.open(this.serviceState.registerMessage(), 'Fechar', {
           duration: 3000,
@@ -303,10 +305,10 @@ export class TableServicesComponent implements OnInit{
     if (this.registerForm.value.departmentId === '') {
       if (this.userLogged()?.departmentId != null) {
         this.registerForm.patchValue({ departmentId: this.userLogged()?.departmentId });
-        this.serviceState.registerServiceManagenent(this.registerForm.value);
+        this.serviceState.registerServiceManagement(this.registerForm.value);
       }
     } else {
-      this.serviceState.registerServiceManagenent(this.registerForm.value);
+      this.serviceState.registerServiceManagement(this.registerForm.value);
     }
   }
 
@@ -332,7 +334,7 @@ export class TableServicesComponent implements OnInit{
    */
   deleteServiceManagement(serviceManagementId: string) {
     if(serviceManagementId === '') return;
-    this.serviceState.deleteService(serviceManagementId);
+    this.serviceState.deleteServiceManagement(serviceManagementId);
   }
 
   // ==================== MÉTODOS DE CONTROLE DE MODAIS ====================
@@ -344,7 +346,7 @@ export class TableServicesComponent implements OnInit{
   openModalRegister() {
     this.initializeRegisterForm();
     this.deparmentState.getDepartmentNameAndId();
-    this.modalRegister.set(true);
+    this.setModalRegister();
   }
 
   /**
@@ -352,7 +354,7 @@ export class TableServicesComponent implements OnInit{
    * Reseta lista de nomes de departamentos
    */
   closeModalRegister() {
-    this.modalRegister.set(false);
+    this.setModalRegister();
     this.deparmentState.resetDepartmentNames();
   }
 

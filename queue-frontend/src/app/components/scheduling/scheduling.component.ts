@@ -140,6 +140,8 @@ export class SchedulingComponent implements OnInit {
   /** Lista de nomes de serviços e departamentos */
   public serviceNamesAndDepartments = this.serviceState.serviceNamesAndDepartments;
 
+  public resetServiceNamesAndDepartments = this.serviceState.resetServiceNamesAndDepartments;
+
   // ==================== ESTADOS - CLIENTES ====================
 
   public customer = this.customerState.customer;
@@ -170,7 +172,7 @@ export class SchedulingComponent implements OnInit {
 
   /** Pegando a foto do customer */
   public customerPhoto = this.customerState.customerPhoto;
-  
+
   // ==================== ESTADOS - AGENDAMENTOS ====================
 
   /** Lista de agendamentos */
@@ -351,7 +353,7 @@ export class SchedulingComponent implements OnInit {
         });
         this.schedulingState.resetStatus();
         this.updateScheduleForm.reset();
-        this.serviceNamesAndDepartments.set([]);
+        this.resetServiceNamesAndDepartments();
         this.customerIdsAndNames.set([]);
         this.modalSchedulingUpdate = false;
         this.schedulingState.resetScheduleInfo();

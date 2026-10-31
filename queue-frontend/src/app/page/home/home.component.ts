@@ -410,7 +410,7 @@ export class HomeComponent {
 
     if (section === 'service') {
       timer(500).subscribe(() => {
-        this.serviceState.modalRegister.set(true);
+        this.serviceState.setModalRegister();
       });
     }
 
