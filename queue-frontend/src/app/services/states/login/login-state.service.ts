@@ -1,67 +1,145 @@
+
 import { inject, Injectable, signal } from '@angular/core';
 import { HttpService } from '../../backend/http.service';
 import { LoginDto } from '../../../dtos/login/LoginDto';
 import { HttpErrorResponse } from '@angular/common/http';
-import { interval } from 'rxjs';
+import { catchError, EMPTY, finalize, tap } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class LoginStateService {
 
-  // Injections
+  // ============================================================
+  // INJECTIONS
+  // ============================================================
+
   private http = inject(HttpService);
 
-  // ===================== RESPONSE STATUS =====================
-  public loginLoading = signal(false);
-  public loginMessage = signal('');
-  public loginStatus = signal<'success' | 'error' | 'default'>('default');
+  // ============================================================
+  // LOGIN SIGNALS
+  // ============================================================
 
-  public logoutMessage = signal('');
-  public logoutStatus = signal<'success' | 'error' | 'default'>('default');
+  private _loginLoading = signal(false);
+  private _loginMessage = signal('');
+  private _loginStatus = signal<'success' | 'error' | 'default'>('default');
 
+  // LOGIN SIGNALS READONLY
+  public readonly loginLoading = this._loginLoading.asReadonly();
+  public readonly loginMessage = this._loginMessage.asReadonly();
+  public readonly loginStatus = this._loginStatus.asReadonly();
 
-  // login
+  // ============================================================
+  // LOGOUT SIGNALS
+  // ============================================================
+
+  private _logoutLoading = signal(false);
+  private _logoutMessage = signal('');
+  private _logoutStatus = signal<'success' | 'error' | 'default'>('default');
+
+  // LOGOUT SIGNALS READONLY
+  public readonly logoutLoading = this._logoutLoading.asReadonly();
+  public readonly logoutMessage = this._logoutMessage.asReadonly();
+  public readonly logoutStatus = this._logoutStatus.asReadonly();
+
+  // ============================================================
+  // LOGIN
+  // ============================================================
+
   login(request: LoginDto) {
 
-    this.loginLoading.set(true);
+    this._loginLoading.set(true);
 
-    this.http.login(request).subscribe({
-      next: (response) => {
+    this.http.login(request)
+      .pipe(
+        tap((response) => {
 
-        // Agora salva somente o accessToken
-        localStorage.setItem('accessToken', response.accessToken);
+          // Salva somente o accessToken
+          localStorage.setItem('accessToken', response.accessToken);
 
-        this.loginMessage.set('Login feito com sucesso');
-        this.loginStatus.set('success');
-        this.loginLoading.set(false);
-      },
+          this._loginMessage.set('Login feito com sucesso');
+          this._loginStatus.set('success');
+        }),
 
-      error: (error: HttpErrorResponse) => {
-        this.loginMessage.set(error.error?.message || 'Erro ao tentar logar');
-        this.loginStatus.set('error');
-        this.loginLoading.set(false);
-      }
-    });
+        catchError((error: HttpErrorResponse) => {
+          this._loginMessage.set(
+            error.error?.message || 'Erro ao tentar logar'
+          );
+
+          this._loginStatus.set('error');
+
+          return EMPTY;
+        }),
+
+        finalize(() => {
+          this._loginLoading.set(false);
+          console.log('Requisição de login finalizada.');
+        })
+      )
+      .subscribe();
   }
+
+  // ============================================================
+  // LOGOUT
+  // ============================================================
 
   logout() {
-    this.http.logout().subscribe({
-      next: () => {
-        this.logoutMessage.set('Logout realizado com sucesso');
-        this.logoutStatus.set('success');
-      },
-      error: (error: HttpErrorResponse) => {
-        this.logoutMessage.set(error.error?.message || 'Erro ao realizar logout');
-        this.logoutStatus.set('error');
-      }
-    });
+
+    this._logoutLoading.set(true);
+
+    this.http.logout()
+      .pipe(
+        tap(() => {
+
+          this._logoutMessage.set('Logout realizado com sucesso');
+          this._logoutStatus.set('success');
+
+          localStorage.removeItem('accessToken');
+        }),
+
+        catchError((error: HttpErrorResponse) => {
+          this._logoutMessage.set(
+            error.error?.message || 'Erro ao realizar logout'
+          );
+
+          this._logoutStatus.set('error');
+
+          return EMPTY;
+        }),
+
+        finalize(() => {
+          this._logoutLoading.set(false);
+          console.log('Requisição de logout finalizada.');
+        })
+      )
+      .subscribe();
   }
 
-  // Resets
+  // ============================================================
+  // RESET LOGIN STATUS
+  // ============================================================
+
+  resetLoginStatus() {
+    this._loginStatus.set('default');
+    this._loginMessage.set('');
+  }
+
+  // ============================================================
+  // RESET LOGOUT STATUS
+  // ============================================================
+
+  resetLogoutStatus() {
+    this._logoutStatus.set('default');
+    this._logoutMessage.set('');
+  }
+
+  // ============================================================
+  // RESET ALL STATUS
+  // ============================================================
+
   resetStatus() {
-    this.loginStatus.set('default');
-    this.logoutStatus.set('default');
+    this.resetLoginStatus();
+    this.resetLogoutStatus();
   }
 
 }
