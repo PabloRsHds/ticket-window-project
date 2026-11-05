@@ -71,6 +71,8 @@ export class SchedulingComponent implements OnInit {
   /** Tabela atualmente exibida (Scheduling ou Customer) */
   table = this.schedulingState.table;
 
+  setTable = this.schedulingState.setTable;
+
   /** Data atual do sistema */
   currentDate = new Date();
 
@@ -87,6 +89,7 @@ export class SchedulingComponent implements OnInit {
 
   /** Modal de registro de agendamento */
   modalSchedulingRegister = this.schedulingState.modalSchedulingRegister;
+  setModalSchedulingRegister = this.schedulingState.setModalSchedulingRegister;
 
   /** Modal de atualização de agendamento */
   modalSchedulingUpdate = false;
@@ -102,7 +105,9 @@ export class SchedulingComponent implements OnInit {
   // ==================== CONTROLE DE MODAIS - CLIENTE ====================
 
   /** Modal de registro de cliente */
-  modalCustomerRegister = this.schedulingState.modalCustomerRegister;
+  modalCustomerRegister = this.customerState.modalCustomerRegister;
+
+  setModalCustomerRegister = this.customerState.setModalCustomerRegister;
 
   /** Modal de atualização de cliente */
   modalCustomerUpdate = false;
@@ -167,8 +172,12 @@ export class SchedulingComponent implements OnInit {
   /** Lista de IDs e nomes de clientes */
   public customerIdsAndNames = this.customerState.customerIdsAndNames;
 
+  public setCustomerIdsAndNames = this.customerState.setCustomerIdsAndNames;
+
   /** Sugestões de clientes para autocomplete */
   public customerSuggestions = this.customerState.customerSuggestions;
+
+  public resetCustomerSuggestions = this.customerState.resetCustomerSuggestions;
 
   /** Pegando a foto do customer */
   public customerPhoto = this.customerState.customerPhoto;
@@ -180,6 +189,8 @@ export class SchedulingComponent implements OnInit {
 
   /** Informações detalhadas de um agendamento */
   public scheduleInfo = this.schedulingState.scheduleInfo;
+
+  public resetScheduleInfo = this.schedulingState.resetScheduleInfo;
 
   /** Página atual da listagem de agendamentos */
   public schedulePage = this.schedulingState.schedulePage;
@@ -325,7 +336,7 @@ export class SchedulingComponent implements OnInit {
           duration: 3000,
           panelClass: ['snackbar-success']
         });
-        this.modalSchedulingRegister.set(false);
+        this.setModalSchedulingRegister();
         this.registerScheduleForm.reset();
         this.schedulingState.resetStatus();
       }
@@ -354,7 +365,7 @@ export class SchedulingComponent implements OnInit {
         this.schedulingState.resetStatus();
         this.updateScheduleForm.reset();
         this.resetServiceNamesAndDepartments();
-        this.customerIdsAndNames.set([]);
+        this.setCustomerIdsAndNames();
         this.modalSchedulingUpdate = false;
         this.schedulingState.resetScheduleInfo();
       }
@@ -386,7 +397,7 @@ export class SchedulingComponent implements OnInit {
           }
         );
 
-        this.modalCustomerRegister.set(false);
+        this.setModalCustomerRegister();
 
         this.openScheduleModalRegister();
 
@@ -578,7 +589,7 @@ export class SchedulingComponent implements OnInit {
    * Carrega listas de clientes e serviços para seleção
    */
   public openScheduleModalRegister() {
-    this.modalSchedulingRegister.set(true);
+    this.setModalSchedulingRegister();
     this.customerState.loadCustomerIdsAndNames();
     this.serviceState.loadServiceNamesAndDepartments();
   }
@@ -587,7 +598,7 @@ export class SchedulingComponent implements OnInit {
    * Fecha modal de registro de agendamento
    */
   public closeScheduleModalRegister() {
-    this.modalSchedulingRegister.set(false);
+    this.setModalSchedulingRegister();
   }
 
   /**
@@ -609,8 +620,8 @@ export class SchedulingComponent implements OnInit {
   public closeScheduleModalUpdate() {
     this.modalSchedulingUpdate = false;
     this.updateScheduleForm.reset();
-    this.customerIdsAndNames.set([]);
-    this.scheduleInfo.set(null);
+    this.setCustomerIdsAndNames();
+    this.resetScheduleInfo();
     this.updateCustomerSearch = '';
   }
 
@@ -630,7 +641,7 @@ export class SchedulingComponent implements OnInit {
    */
   public closeScheduleModalDelete() {
     this.modalSchedulingDelete = false;
-    this.scheduleInfo.set(null);
+    this.resetScheduleInfo();
   }
 
   /**
@@ -650,7 +661,7 @@ export class SchedulingComponent implements OnInit {
    */
   public closeScheduleModalView() {
     this.modalSchedulingView = false;
-    this.scheduleInfo.set(null);
+    this.resetScheduleInfo();
   }
 
   // ==================== MÉTODOS DE CONTROLE DE MODAIS - CLIENTE ====================
@@ -659,14 +670,14 @@ export class SchedulingComponent implements OnInit {
    * Abre modal de registro de cliente
    */
   public openCustomerModalRegister() {
-    this.modalCustomerRegister.set(true);
+    this.setModalCustomerRegister();
   }
 
   /**
    * Fecha modal de registro de cliente
    */
   public closeCustomerModalRegister() {
-    this.modalCustomerRegister.set(false);
+    this.setModalCustomerRegister();
   }
 
   /**
@@ -1034,7 +1045,7 @@ export class SchedulingComponent implements OnInit {
    * @param table - Nome da tabela
    */
   public handleTable(table: string) {
-    this.table.set(table);
+    this.setTable(table);
   }
 
   /**
@@ -1116,7 +1127,7 @@ export class SchedulingComponent implements OnInit {
     this.searchCustomerInput = value;
 
     if (value.trim().length < 2) {
-      this.customerSuggestions.set([]);
+      this.resetCustomerSuggestions();
       return;
     }
 
@@ -1140,7 +1151,7 @@ export class SchedulingComponent implements OnInit {
       customerId: customer.customerId
     });
 
-    this.customerSuggestions.set([]);
+    this.resetCustomerSuggestions();
   }
 
   /**
@@ -1155,7 +1166,7 @@ export class SchedulingComponent implements OnInit {
     this.updateCustomerSearch = value;
 
     if (value.trim().length < 2) {
-      this.customerState.customerSuggestions.set([]);
+      this.resetCustomerSuggestions();
       return;
     }
 
@@ -1175,7 +1186,7 @@ export class SchedulingComponent implements OnInit {
       customerId: customer.customerId
     });
 
-    this.customerState.customerSuggestions.set([]);
+    this.resetCustomerSuggestions();
   }
 
   async initializeCamera() {

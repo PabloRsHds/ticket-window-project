@@ -10,7 +10,7 @@ import { ResponseUsersCreatedByMonthStatisticsDto } from '../../../dtos/users/st
 import { ResponseServicesByUserStatisticsDto } from '../../../dtos/users/statistics/ResponseServicesByUserStatisticsDto';
 import { ResponseUsersByRoleStatisticsDto } from '../../../dtos/users/statistics/ResponseUsersByRoleStatisticsDto';
 import { HttpErrorResponse } from '@angular/common/http';
-import { catchError, EMPTY, finalize, tap, throwError } from 'rxjs';
+import { catchError, EMPTY, finalize, tap } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -380,7 +380,7 @@ export class UserStateService {
   }
 
   setModalRegister() {
-    this._modalRegister.set(!this.modalRegister);
+    this._modalRegister.update(value => !value);
   }
 
   resetUserInfo() {
