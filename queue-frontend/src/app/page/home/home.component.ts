@@ -178,6 +178,8 @@ export class HomeComponent {
   /** Seção ativa do menu lateral */
   public activeSection = this.globalState.activeSection;
 
+  public setActiveSection = this.globalState.setActiveSection;
+
   /** Total de departamentos cadastrados */
   public totalDepartments = this.departmentState.countTotalDepartment;
 
@@ -245,7 +247,7 @@ export class HomeComponent {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('activeSection');
         this.router.navigate(['/login']);
-        this.activeSection.set('inicio');
+        this.setActiveSection('inicio');
         localStorage.setItem('activeSection', 'inicio');
       }
 
@@ -392,7 +394,7 @@ export class HomeComponent {
    */
   setActive(section: string) {
     localStorage.setItem('activeSection', section);
-    this.activeSection.set(section);
+    this.setActiveSection(section);
     // Fecha menu lateral em dispositivos móveis após navegação
     if (window.innerWidth <= 768) {
       this.openAside = false;
@@ -405,7 +407,7 @@ export class HomeComponent {
    * @param section - Nome da seção alvo
    */
   functionActive(section: string) {
-    this.activeSection.set(section);
+    this.setActiveSection(section);
 
     // Aguarda 500ms para troca de seção antes de abrir modal
     if (section === 'department') {
@@ -434,7 +436,7 @@ export class HomeComponent {
     }
 
     if (section === 'scheduling-customer') {
-      this.activeSection.set('scheduling');
+      this.setActiveSection('scheduling');
       timer(500).subscribe(() => {
         this.setModalCustomerRegister();
         this.setTable('Customers');
@@ -444,7 +446,7 @@ export class HomeComponent {
     if (section === 'attendant') {
       // Aguarda 200ms para navegar para atendimento
       timer(200).subscribe(() => {
-        this.activeSection.set('attendance');
+        this.setActiveSection('attendance');
       });
     }
   }

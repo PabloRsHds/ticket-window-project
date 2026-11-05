@@ -4,10 +4,9 @@ import { CommonModule } from '@angular/common';
 import { TicketStateService } from '../../services/states/ticket/ticket-state.service';
 import { UserStateService } from '../../services/states/user/user-state.service';
 import { ResponseTicketsForAttendanceDto } from '../../dtos/ticket/ResponseTicketsForAttendanceDto';
-import { interval, Subscription } from 'rxjs';
+import { Subscription } from 'rxjs';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { VoiceService } from '../../services/voice/voice.service';
 
 @Component({
   selector: 'app-service-counter',
