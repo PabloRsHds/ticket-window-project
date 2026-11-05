@@ -193,6 +193,12 @@ export class HomeComponent {
   /** Total de atendimentos realizados */
   public countTotalAttendances = this.attendentState.countTotalAttendances;
 
+  public setModalCustomerRegister = this.customerState.setModalCustomerRegister;
+
+  public setModalSchedulingRegister = this.schedulingState.setModalSchedulingRegister;
+
+  public setTable = this.schedulingState.setTable;
+
   // ==================== VARIÁVEIS DE CONTROLE ====================
 
   /** Controla abertura do menu lateral em dispositivos móveis */
@@ -422,16 +428,16 @@ export class HomeComponent {
 
     if (section === 'scheduling') {
       timer(500).subscribe(() => {
-        this.scheduleState.modalSchedulingRegister.set(true);
-        this.schedulingState.table.set('Scheduling');
+        this.setModalSchedulingRegister();
+        this.setTable('Scheduling');
       });
     }
 
     if (section === 'scheduling-customer') {
       this.activeSection.set('scheduling');
       timer(500).subscribe(() => {
-        this.scheduleState.modalCustomerRegister.set(true);
-        this.schedulingState.table.set('Customers');
+        this.setModalCustomerRegister();
+        this.setTable('Customers');
       });
     }
 
