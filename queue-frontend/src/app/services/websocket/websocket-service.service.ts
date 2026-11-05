@@ -1,10 +1,14 @@
+
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client/dist/sockjs';
 import { inject, Injectable, signal } from '@angular/core';
+
 import { ResponseTicketsForAttendanceDto } from '../../dtos/ticket/ResponseTicketsForAttendanceDto';
+import { ResponseTicketDto } from '../../dtos/ticket/ResponseTicketDto';
+
 import { TicketStateService } from '../states/ticket/ticket-state.service';
 import { AttendentStateService } from '../states/attendent/attendent-state.service';
-import { ResponseTicketDto } from '../../dtos/ticket/ResponseTicketDto';
+
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -12,78 +16,91 @@ import { environment } from '../../environments/environment';
 })
 export class WebSocketService {
 
+  // ===== CONFIGURATION =====
   private readonly API_URL = environment.API_URL;
 
-  // Inject
+  // ===== INJECTIONS =====
   private ticketState = inject(TicketStateService);
   private attendentState = inject(AttendentStateService);
 
-  private client!: Client;
+  // ===== STATES =====
+  private _lastTicket = signal<ResponseTicketsForAttendanceDto | null>(null);
+  public lastTicket = this._lastTicket.asReadonly();
 
-  readonly lastTicket = signal<ResponseTicketsForAttendanceDto | null>(null);
+  // ===== CLIENT =====
+  private client?: Client;
 
-  connect() {
+
+  // ===== CONNECT =====
+  connect(): void {
+
+    if (this.client?.active) return;
 
     this.client = new Client({
-    webSocketFactory: () => new SockJS(`${this.API_URL}/ws`),
 
-    reconnectDelay: 5000,
+      webSocketFactory: () => new SockJS(`${this.API_URL}/ws`),
 
-    onConnect: () => {
-      console.log('WebSocket conectado');
+      reconnectDelay: 5000,
 
-      this.client.subscribe('/topic/tickets', message => {
+      onConnect: () => {
 
-        const ticket: ResponseTicketsForAttendanceDto =
-          JSON.parse(message.body);
+        // ===== NEW TICKETS =====
+        this.client?.subscribe('/topic/tickets', message => {
 
-        this.ticketState.addTicketFromWebSocket(ticket);
-        this.attendentState.incrementWaitingAttendances();
-      });
+          const ticket: ResponseTicketsForAttendanceDto =
+            JSON.parse(message.body);
+          this.ticketState.addTicketFromWebSocket(ticket);
+          this.attendentState.incrementWaitingAttendances();
+        });
 
-      this.client.subscribe('/topic/queue-display', message => {
 
-        const ticket: ResponseTicketDto = JSON.parse(message.body);
-        this.ticketState.ticketForPanel.set(ticket);
+        // ===== QUEUE DISPLAY =====
+        this.client?.subscribe('/topic/queue-display', message => {
 
-      });
+          const ticket: ResponseTicketDto =
+            JSON.parse(message.body);
+          this.ticketState.setTicketForPanel(ticket);
+        });
 
-      this.client.subscribe('/topic/tickets/history', message => {
 
-        const history: ResponseTicketsForAttendanceDto[] = JSON.parse(message.body);
-        this.ticketState.historyTicketsForAttendant.set(history);
-      })
+        // ===== ATTENDANT TICKET HISTORY =====
+        this.client?.subscribe('/topic/tickets/history', message => {
 
-      this.client.subscribe('/topic/queue-display/call', message => {
+          const history: ResponseTicketsForAttendanceDto[] =
+            JSON.parse(message.body);
+          this.ticketState.setHistoryTicketsForAttendant(history);
+        });
 
-          const ticket: ResponseTicketDto = JSON.parse(message.body);
-          this.ticketState.ticketForPanel.set(ticket);
 
-      });
+        // ===== CALLED TICKET =====
+        this.client?.subscribe('/topic/queue-display/call', message => {
 
-      this.client.subscribe('/topic/ticket-history', message => {
+          const ticket: ResponseTicketDto =
+            JSON.parse(message.body);
 
-        const response = JSON.parse(message.body);
-        this.ticketState.historyTickets.set(response.content);
+          this.ticketState.setTicketForPanel(ticket);
+        });
 
-      });
 
-    },
+        // ===== TICKET HISTORY =====
+        this.client?.subscribe('/topic/ticket-history', message => {
 
-    onStompError: error => {
-      console.error('Erro STOMP:', error);
-    },
+          const response = JSON.parse(message.body);
+          this.ticketState.setHistoryTickets(response.content);
+        });
+      }
+    });
 
-    onWebSocketError: error => {
-      console.error('Erro WebSocket:', error);
-    }
-  });
-
-  this.client.activate();
+    this.client.activate();
   }
 
-  disconnect() {
+
+  // ===== DISCONNECT =====
+  disconnect(): void {
+    if (!this.client) return;
+
     this.client.deactivate();
+    this.client = undefined;
   }
 
 }
